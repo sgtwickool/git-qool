@@ -23,6 +23,11 @@ function parse_commandline()
         help = "sql server log in password"
         arg_type = String
         required = false
+        "--repository", "-r"
+        help = "folder containing local repository where you want to store files"
+        arg_type = String
+        default = pwd()
+        required = false
     end
 
     return parse_args(s)
@@ -35,6 +40,7 @@ function main()
     database = parsed_args["database"]
     username = parsed_args["username"]
     password = parsed_args["password"]
+    repository = parsed_args["repository"]
 
     if username == nothing
         println("Enter user ID for IVIEWALPHA:")
@@ -62,6 +68,8 @@ function main()
     objectsql = read("sqlObjectDefinitions.sql", String)
     sqlobjects = DBInterface.execute(conn, objectsql) |> DataFrame
 
+    rm("$(repository)/$(database)", recursive=true, force=true)
+
     # Loop through each object and store each definition in a sql file grouped in folders by type
     for (name, schemaname, type_desc, definition) in zip(
         sqlobjects.name,
@@ -69,8 +77,9 @@ function main()
         sqlobjects.type_desc,
         sqlobjects.definition,
     )
-        mkpath(type_desc)
-        filename = "$type_desc/$schemaname.$name.sql"
+        type_folder = "$(repository)/$(database)/$(type_desc)"
+        mkpath(type_folder)
+        filename = "$type_folder/$schemaname.$name.sql"
         output_file = open(filename, "w")
         #println(filename)
         write(output_file, definition)
