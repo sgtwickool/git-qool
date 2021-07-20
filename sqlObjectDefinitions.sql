@@ -1,9 +1,16 @@
-SELECT o.name,m.definition,o.type_desc,s.name AS schemaname
-FROM   sys.sql_modules AS m
-INNER JOIN sys.objects AS o ON o.object_id = m.object_id
-INNER JOIN sys.schemas AS s	ON s.schema_id = o.schema_id
+SELECT	   o.name
+		  ,s.name AS schemaname
+		  ,o.type_desc
+		  ,m.definition
+FROM	   sys.sql_modules AS m
+INNER JOIN sys.objects AS o
+	ON o.object_id = m.object_id
+INNER JOIN sys.schemas AS s
+	ON s.schema_id = o.schema_id
 UNION ALL
 SELECT		o.name
+		   ,s.name AS schemaname
+		   ,o.type_desc
 		   ,CONCAT(
 				N'CREATE TABLE '
 			   ,s.name
@@ -16,8 +23,6 @@ SELECT		o.name
 			   ,CHAR(13)
 			   ,CHAR(10)
 			   ,')') AS definition
-		   ,o.type_desc
-		   ,s.name
 FROM		sys.objects AS o
 INNER JOIN	sys.schemas AS s
 	ON s.schema_id = o.schema_id
@@ -37,4 +42,35 @@ OUTER APPLY (SELECT STUFF(
 				   ,1
 				   ,2
 				   ,'   ') AS coldef) AS c
-WHERE		o.type = 'U';
+WHERE		o.type = 'U'
+UNION ALL
+SELECT		tt.name
+		   ,s.name AS schemaname
+		   ,o.type_desc
+		   ,CONCAT(
+				N'CREATE TYPE ' , s.name, '.', tt.name, ' AS TABLE (', CHAR(13), CHAR(10), c.coldef, CHAR(13), CHAR(10), ')') AS definition
+FROM		sys.objects AS o
+INNER JOIN	sys.table_types AS tt
+	ON tt.type_table_object_id = o.object_id
+INNER JOIN	sys.schemas AS s
+	ON s.schema_id = tt.schema_id
+OUTER APPLY (SELECT STUFF((	  SELECT	 CONCAT(CHAR(13)
+											   ,CHAR(10)
+											   ,'  ,'
+											   ,cols.name
+											   ,' '
+											   ,t.name
+											   ,CASE cols.is_nullable
+													WHEN 1 THEN ' NULL'
+													ELSE ' NOT NULL'
+												END)
+							  FROM		 sys.columns AS cols
+							  INNER JOIN sys.types AS t
+								  ON t.system_type_id = cols.system_type_id
+							  WHERE		 cols.object_id = o.object_id
+							  ORDER BY	 cols.column_id
+							  FOR XML PATH(''), TYPE).value('.', 'varchar(max)')
+						 ,1
+						 ,5
+						 ,'   ') AS coldef) AS c
+WHERE		o.type = 'TT';
