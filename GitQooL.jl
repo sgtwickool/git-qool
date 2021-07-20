@@ -4,9 +4,12 @@ using DataFrames
 using LightXML
 
 function parse_commandline()
-    s = ArgParseSettings()
+    s = ArgParseSettings(commands_are_required = false)
 
     @add_arg_table! s begin
+        "retrieve-db-objects"
+        help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in repository, the object will be deleted from local repository."
+        action = :command
         "--servername", "-s"
         help = "server name on which your target database is stored"
         arg_type = String
@@ -23,25 +26,30 @@ function parse_commandline()
         help = "sql server log in password"
         arg_type = String
         required = false
-        "--repository", "-r"
-        help = "folder containing local repository where you want to store files"
+        "--location", "-l"
+        help = "location of folder containing local repository where you want to store files"
         arg_type = String
         default = pwd()
         required = false
     end
 
-    return parse_args(s)
+    parse_args(s)
 end
 
-function main()
+function getargs()
     parsed_args = parse_commandline()
 
-    servername = parsed_args["servername"]
-    database = parsed_args["database"]
-    username = parsed_args["username"]
-    password = parsed_args["password"]
-    repository = parsed_args["repository"]
+    (
+        servername = parsed_args["servername"],
+        database = parsed_args["database"],
+        username = parsed_args["username"],
+        password = parsed_args["password"],
+        location = parsed_args["location"],
+        command = parsed_args["%COMMAND%"],
+    )
+end
 
+function extractFilesFromDb(servername, database, username, password, location)
     if username == nothing
         println("Enter user ID for IVIEWALPHA:")
         username = chomp(readline())
@@ -68,7 +76,7 @@ function main()
     objectsql = read("sqlObjectDefinitions.sql", String)
     sqlobjects = DBInterface.execute(conn, objectsql) |> DataFrame
 
-    rm("$(repository)/$(database)", recursive=true, force=true)
+    rm("$(location)/$(database)", recursive = true, force = true)
 
     # Loop through each object and store each definition in a sql file grouped in folders by type
     for (name, schemaname, type_desc, definition) in zip(
@@ -77,7 +85,7 @@ function main()
         sqlobjects.type_desc,
         sqlobjects.definition,
     )
-        type_folder = "$(repository)/$(database)/$(type_desc)"
+        type_folder = "$(location)/$(database)/$(type_desc)"
         mkpath(type_folder)
         filename = "$type_folder/$schemaname.$name.sql"
         output_file = open(filename, "w")
@@ -89,4 +97,10 @@ function main()
     DBInterface.close!(conn)
 end
 
-main()
+a = getargs()
+
+if a.command == "retrieve-db-objects"
+    extractFilesFromDb(a.servername, a.database, a.username, a.password, a.location)
+else
+    println("Please use command. Call \"git-qool --help\" for details of available commands.")
+end
