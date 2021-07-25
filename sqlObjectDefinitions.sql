@@ -73,4 +73,22 @@ OUTER APPLY (SELECT STUFF((	  SELECT	 CONCAT(CHAR(13)
 						 ,1
 						 ,5
 						 ,'   ') AS coldef) AS c
-WHERE		o.type = 'TT';
+WHERE		o.type = 'TT'
+UNION ALL
+SELECT	   s.name
+		  ,sy.name AS schemaname
+		  ,sy.type_desc
+		  ,CONCAT(
+			   N'CREATE SYNONYM '
+			  ,sy.name
+			  ,' REFERENCES '
+			  ,CASE WHEN sy.base_object_name LIKE '\[%\].\[%\].\[%\].\[%\]' ESCAPE '\' THEN
+						REPLACE(
+							sy.base_object_name
+						   ,LEFT(sy.base_object_name, CHARINDEX('.', sy.base_object_name))
+						   ,'{Variable Server Name}.')
+				   ELSE sy.base_object_name
+			   END) AS definition
+FROM	   sys.synonyms AS sy
+INNER JOIN sys.schemas AS s
+	ON s.schema_id = sy.schema_id;;
