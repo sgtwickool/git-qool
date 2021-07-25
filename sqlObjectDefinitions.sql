@@ -86,7 +86,7 @@ SELECT	   s.name
 						REPLACE(
 							sy.base_object_name
 						   ,LEFT(sy.base_object_name, CHARINDEX('.', sy.base_object_name))
-						   ,'{Variable Server Name}.')
+						   ,'{$server_name$}.')
 				   ELSE sy.base_object_name
 			   END) AS definition
 FROM	   sys.synonyms AS sy
