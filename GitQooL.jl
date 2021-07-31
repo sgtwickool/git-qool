@@ -87,7 +87,7 @@ function extractFilesFromDb(servername, database, username, password, location)
     )
         type_folder = "$(location)/$(database)/$(type_desc)"
         mkpath(type_folder)
-        filename = "$type_folder/$schemaname.$name.sql"
+        filename = schemaname === missing ? "$type_folder/$name.sql" : "$type_folder/$schemaname.$name.sql"
         output_file = open(filename, "w")
         #println(filename)
         write(output_file, definition)

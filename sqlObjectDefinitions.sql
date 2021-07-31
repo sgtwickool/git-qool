@@ -75,8 +75,8 @@ OUTER APPLY (SELECT STUFF((	  SELECT	 CONCAT(CHAR(13)
 						 ,'   ') AS coldef) AS c
 WHERE		o.type = 'TT'
 UNION ALL
-SELECT	   s.name
-		  ,sy.name AS schemaname
+SELECT	   sy.name
+		  ,s.name AS schemaname
 		  ,sy.type_desc
 		  ,CONCAT(
 			   N'CREATE SYNONYM '
@@ -91,4 +91,33 @@ SELECT	   s.name
 			   END) AS definition
 FROM	   sys.synonyms AS sy
 INNER JOIN sys.schemas AS s
-	ON s.schema_id = sy.schema_id;;
+	ON s.schema_id = sy.schema_id
+UNION ALL
+SELECT	   a.name
+		  ,NULL AS schemaname
+		  ,'ASSEMBLY' AS type_desc
+		  ,CONCAT(
+			   N'CREATE ASSEMBLY '
+			  ,QUOTENAME(a.name)
+			  ,' AUTHORIZATION '
+			  ,QUOTENAME(dp.name)
+			  ,' FROM '
+			  ,CONVERT(VARCHAR(MAX), af.content, 1)
+			  ,CASE a.permission_set
+				   WHEN 3 THEN ' WITH PERMISSION_SET=UNSAFE'
+			   END) AS definitiviewalphion
+FROM	   sys.assemblies AS a
+INNER JOIN sys.assembly_files AS af
+	ON af.assembly_id = a.assembly_id
+INNER JOIN sys.database_principals AS dp
+	ON dp.principal_id = a.principal_id
+WHERE	   a.is_user_defined = 1
+UNION ALL
+SELECT	   t.name
+		  ,NULL AS schemaname
+		  ,'DATABASE_TRIGGER' AS type_desc
+		  ,sm.definition
+FROM	   sys.triggers AS t
+INNER JOIN sys.sql_modules AS sm
+	ON sm.object_id = t.object_id
+WHERE	   t.parent_class = 0; --DATABASE parent_class;
