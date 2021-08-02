@@ -81,7 +81,7 @@ SELECT	   sy.name
 		  ,CONCAT(
 			   N'CREATE SYNONYM '
 			  ,sy.name
-			  ,' REFERENCES '
+			  ,N' REFERENCES '
 			  ,CASE WHEN sy.base_object_name LIKE '\[%\].\[%\].\[%\].\[%\]' ESCAPE '\' THEN
 						REPLACE(
 							sy.base_object_name
@@ -95,16 +95,16 @@ INNER JOIN sys.schemas AS s
 UNION ALL
 SELECT	   a.name
 		  ,NULL AS schemaname
-		  ,'ASSEMBLY' AS type_desc
+		  ,N'ASSEMBLY' AS type_desc
 		  ,CONCAT(
 			   N'CREATE ASSEMBLY '
 			  ,QUOTENAME(a.name)
-			  ,' AUTHORIZATION '
+			  ,N' AUTHORIZATION '
 			  ,QUOTENAME(dp.name)
-			  ,' FROM '
+			  ,N' FROM '
 			  ,CONVERT(VARCHAR(MAX), af.content, 1)
 			  ,CASE a.permission_set
-				   WHEN 3 THEN ' WITH PERMISSION_SET=UNSAFE'
+				   WHEN 3 THEN N' WITH PERMISSION_SET=UNSAFE'
 			   END) AS definitiviewalphion
 FROM	   sys.assemblies AS a
 INNER JOIN sys.assembly_files AS af
@@ -115,9 +115,18 @@ WHERE	   a.is_user_defined = 1
 UNION ALL
 SELECT	   t.name
 		  ,NULL AS schemaname
-		  ,'DATABASE_TRIGGER' AS type_desc
+		  ,N'DATABASE_TRIGGER' AS type_desc
 		  ,sm.definition
 FROM	   sys.triggers AS t
 INNER JOIN sys.sql_modules AS sm
 	ON sm.object_id = t.object_id
-WHERE	   t.parent_class = 0; --DATABASE parent_class;
+WHERE	   t.parent_class = 0 --DATABASE parent_class;
+UNION ALL
+SELECT	   s.name
+		  ,NULL AS schemaname
+		  ,N'SCHEMA'
+		  ,CONCAT(N'CREATE SCHEMA ', QUOTENAME(s.name), CHAR(13), CHAR(10), N'AUTHORIZATION ', QUOTENAME(dp.name)) AS definition
+FROM	   sys.schemas AS s
+INNER JOIN sys.database_principals AS dp
+	ON dp.principal_id = s.principal_id
+WHERE	   s.principal_id = 1;
