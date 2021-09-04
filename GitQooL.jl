@@ -78,7 +78,8 @@ function extractFilesFromDb(servername, database, username, password, location)
 
     rm("$(location)/$(database)", recursive = true, force = true)
 
-    # Loop through each object and store each definition in a sql file grouped in folders by type
+    # Loop through each object and store each definition in a sql file
+    # grouped in folders by type
     for (name, schemaname, type_desc, definition) in zip(
         sqlobjects.name,
         sqlobjects.schemaname,
@@ -87,7 +88,9 @@ function extractFilesFromDb(servername, database, username, password, location)
     )
         type_folder = "$(location)/$(database)/$(type_desc)"
         mkpath(type_folder)
-        filename = schemaname === missing ? "$type_folder/$name.sql" : "$type_folder/$schemaname.$name.sql"
+        filename =
+            schemaname === missing ? "$type_folder/$name.sql" :
+            "$type_folder/$schemaname.$name.sql"
         output_file = open(filename, "w")
         #println(filename)
         write(output_file, definition)
@@ -100,7 +103,15 @@ end
 a = getargs()
 
 if a.command == "retrieve-db-objects"
-    extractFilesFromDb(a.servername, a.database, a.username, a.password, a.location)
+    extractFilesFromDb(
+        a.servername,
+        a.database,
+        a.username,
+        a.password,
+        a.location,
+    )
 else
-    println("Please use command. Call \"git-qool --help\" for details of available commands.")
+    println(
+        "Please use command. Call \"git-qool --help\" for details of available commands.",
+    )
 end
