@@ -60,22 +60,30 @@ function extractFilesFromDb(servername, database, username, password, location)
         password = chomp(readline())
     end
 
-    dnsname = "$(servername)_$(database)"
+    dsnname = "$(servername)_$(database)"
+
+    if length(dsnname) > 32
+        dsnname = SubString(dsnname,1,32)
+    end
 
     ODBC.adddsn(
-        dnsname,
+        dsnname,
         "SQL Server";
         SERVER = servername,
         DATABASE = database,
         UID = username,
         PWD = password,
     )
-    conn = ODBC.Connection(dnsname, username, password)
+
+    println("Connecting to database")
+    conn = ODBC.Connection(dsnname, username, password)
 
     # Get all object names, types, and definitions from DB
     objectsql = read("sqlObjectDefinitions.sql", String)
+    println("Retrieving database object definitions")
     sqlobjects = DBInterface.execute(conn, objectsql) |> DataFrame
 
+    println("Clearing existing local directory")
     rm("$(location)/$(database)", recursive = true, force = true)
 
     # Loop through each object and store each definition in a sql file
@@ -87,6 +95,7 @@ function extractFilesFromDb(servername, database, username, password, location)
         sqlobjects.definition,
     )
         type_folder = "$(location)/$(database)/$(type_desc)"
+        println("Saving $(type_desc): $(name)")
         mkpath(type_folder)
         filename =
             schemaname === missing ? "$type_folder/$name.sql" :
@@ -97,6 +106,7 @@ function extractFilesFromDb(servername, database, username, password, location)
         close(output_file)
     end
 
+    println("Closing database connection")
     DBInterface.close!(conn)
 end
 
