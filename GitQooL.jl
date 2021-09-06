@@ -60,7 +60,7 @@ function extractFilesFromDb(servername, database, username, password, location)
         password = chomp(readline())
     end
 
-    dsnname = "$(servername)_$(database)"
+    dsnname::String = "$(servername)_$(database)"
 
     if length(dsnname) > 32
         dsnname = SubString(dsnname,1,32)
