@@ -129,4 +129,52 @@ SELECT	   s.name
 FROM	   sys.schemas AS s
 INNER JOIN sys.database_principals AS dp
 	ON dp.principal_id = s.principal_id
-WHERE	   s.principal_id = 1;
+WHERE	   s.principal_id = 1
+UNION ALL
+SELECT	   s.name
+		  ,sch.name
+		  ,s.type_desc
+		  ,CONCAT(
+			   N'CREATE SEQUENCE '
+			  ,QUOTENAME(sch.name)
+			  ,N'.'
+			  ,QUOTENAME(s.name)
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,N'AS '
+			  ,UPPER(ISNULL(tu.name, ts.name))
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,N'START WITH '
+			  ,CAST(s.start_value AS INT)
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,N'INCREMENT BY '
+			  ,CAST(s.increment AS INT)
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,N'MINVALUE '
+			  ,CAST(s.minimum_value AS BIGINT)
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,N'MAXVALUE '
+			  ,CAST(s.maximum_value AS BIGINT)
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,CASE s.is_cycling
+				   WHEN 1 THEN 'CYCLE'
+				   ELSE 'NO CYCLE'
+			   END
+			  ,CHAR(13)
+			  ,CHAR(10)
+			  ,CASE s.is_cached
+				   WHEN 1 THEN 'CACHE'
+				   ELSE 'NO CACHE'
+			   END) AS definition
+FROM	   sys.sequences AS s
+INNER JOIN sys.schemas AS sch
+	ON sch.schema_id = s.schema_id
+LEFT JOIN  sys.types AS ts
+	ON ts.system_type_id = s.system_type_id
+LEFT JOIN  sys.types AS tu
+	ON tu.user_type_id = s.user_type_id;
