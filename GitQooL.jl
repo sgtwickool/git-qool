@@ -60,23 +60,10 @@ function extractFilesFromDb(servername, database, username, password, location)
         password = chomp(readline())
     end
 
-    dsnname::String = "$(servername)_$(database)"
-
-    if length(dsnname) > 32
-        dsnname = SubString(dsnname,1,32)
-    end
-
-    ODBC.adddsn(
-        dsnname,
-        "SQL Server";
-        SERVER = servername,
-        DATABASE = database,
-        UID = username,
-        PWD = password,
-    )
-
     println("Connecting to database")
-    conn = ODBC.Connection(dsnname, username, password)
+    conn = ODBC.Connection(
+        "Driver=SQL Server;SERVER=$(servername);DATABASE=$(database);UID=$(username);PWD=$(password)",
+    )
 
     # Get all object names, types, and definitions from DB
     objectsql = read("sqlObjectDefinitions.sql", String)
