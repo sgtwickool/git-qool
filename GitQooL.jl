@@ -4,12 +4,16 @@ using DataFrames
 using LightXML
 
 function parse_commandline()
-    s = ArgParseSettings(commands_are_required = false)
+    settings = ArgParseSettings(commands_are_required = false)
 
-    @add_arg_table! s begin
+    @add_arg_table! settings begin
         "retrieve-db-objects"
-        help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in repository, the object will be deleted from local repository."
+        help = "save db object definitions to chosen directory. if objects
+        already exist in directory, they will be overwritten. if object exists in directory, but does not exist in database, the object will be deleted from directory."
         action = :command
+    end
+
+    @add_arg_table! settings["retrieve-db-objects"] begin
         "--servername", "-s"
         help = "server name on which your target database is stored"
         arg_type = String
@@ -33,7 +37,7 @@ function parse_commandline()
         required = false
     end
 
-    parse_args(s)
+    parse_args(settings)
 end
 
 function getargs()
