@@ -8,8 +8,7 @@ function parse_commandline()
 
     @add_arg_table! settings begin
         "retrieve-db-objects"
-        help = "save db object definitions to chosen directory. if objects
-        already exist in directory, they will be overwritten. if object exists in directory, but does not exist in database, the object will be deleted from directory."
+        help = "save db object definitions to chosen directory. if objects already exist in directory, they will be overwritten. if object exists in directory, but does not exist in database, the object will be deleted from directory."
         action = :command
     end
 
@@ -96,6 +95,26 @@ function extractFilesFromDb(servername, database, username, password, location)
         write(output_file, definition)
         close(output_file)
     end
+
+    println("Closing database connection")
+    DBInterface.close!(conn)
+end
+
+function deployToDb(servername, database, username, password, location)
+    if username == nothing
+        println("Enter user ID for IVIEWALPHA:")
+        username = chomp(readline())
+    end
+
+    if password == nothing
+        println("Enter password:")
+        password = chomp(readline())
+    end
+
+    println("Connecting to database")
+    conn = ODBC.Connection(
+        "Driver=SQL Server;SERVER=$(servername);DATABASE=$(database);UID=$(username);PWD=$(password)",
+    )
 
     println("Closing database connection")
     DBInterface.close!(conn)
