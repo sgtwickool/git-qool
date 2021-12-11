@@ -1,7 +1,19 @@
+module GitQooL
+
 using ArgParse
 using ODBC
 using DataFrames
 using LightXML
+
+function julia_main()::Cint
+    try
+        real_main()
+    catch
+        Base.invokelatest(Base.display_error, Base.catch_stack())
+        return 1
+    end
+    return 0
+end
 
 function parse_commandline()
     s = ArgParseSettings(commands_are_required = false)
@@ -50,6 +62,8 @@ function getargs()
 end
 
 function extractFilesFromDb(servername, database, username, password, location)
+    @show ARGS
+
     if username == nothing
         println("Enter user ID for IVIEWALPHA:")
         username = chomp(readline())
@@ -97,18 +111,26 @@ function extractFilesFromDb(servername, database, username, password, location)
     DBInterface.close!(conn)
 end
 
-a = getargs()
+function real_main()
+    a = getargs()
 
-if a.command == "retrieve-db-objects"
-    extractFilesFromDb(
-        a.servername,
-        a.database,
-        a.username,
-        a.password,
-        a.location,
-    )
-else
-    println(
-        "Please use command. Call \"git-qool --help\" for details of available commands.",
-    )
+    if a.command == "retrieve-db-objects"
+        extractFilesFromDb(
+            a.servername,
+            a.database,
+            a.username,
+            a.password,
+            a.location,
+        )
+    else
+        println(
+            "Please use command. Call \"git-qool --help\" for details of available commands.",
+        )
+    end
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    real_main()
+end
+
 end
