@@ -16,14 +16,16 @@ function julia_main()::Cint
 end
 
 function parse_commandline(args)
-    s = ArgParseSettings(commands_are_required = false)
+    s = ArgParseSettings(commands_are_required = true)
 
+    # command list
     @add_arg_table! s begin
         "retrieve-db-objects"
         help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in repository, the object will be deleted from local repository."
         action = :command
     end
 
+    # params specific to retrieve-db-objects command
     @add_arg_table! s["retrieve-db-objects"] begin
         "--servername", "-s"
         help = "server name on which your target database is stored"
@@ -104,13 +106,19 @@ end
 function real_main()
     parsed_args = parse_commandline(ARGS)
 
-    if parsed_args["%COMMAND%"] == "retrieve-db-objects"
+    # store entered command
+    cmd = parsed_args["%COMMAND%"]
+
+    # dict lookup for command gives access to arguments for command
+    cmdArgs = parsed_args[cmd]
+
+    if cmd == "retrieve-db-objects"
         extractFilesFromDb(
-            parsed_args[parsed_args["%COMMAND%"]]["servername"],
-            parsed_args[parsed_args["%COMMAND%"]]["database"],
-            parsed_args[parsed_args["%COMMAND%"]]["username"],
-            parsed_args[parsed_args["%COMMAND%"]]["password"],
-            parsed_args[parsed_args["%COMMAND%"]]["location"],
+            cmdArgs["servername"],
+            cmdArgs["database"],
+            cmdArgs["username"],
+            cmdArgs["password"],
+            cmdArgs["location"],
         )
     else
         println(
