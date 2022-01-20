@@ -15,13 +15,16 @@ function julia_main()::Cint
     return 0
 end
 
-function parse_commandline()
+function parse_commandline(args)
     s = ArgParseSettings(commands_are_required = false)
 
     @add_arg_table! s begin
         "retrieve-db-objects"
         help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in repository, the object will be deleted from local repository."
         action = :command
+    end
+
+    @add_arg_table! s["retrieve-db-objects"] begin
         "--servername", "-s"
         help = "server name on which your target database is stored"
         arg_type = String
@@ -45,20 +48,7 @@ function parse_commandline()
         required = false
     end
 
-    parse_args(s)
-end
-
-function getargs()
-    parsed_args = parse_commandline()
-
-    (
-        servername = parsed_args["servername"],
-        database = parsed_args["database"],
-        username = parsed_args["username"],
-        password = parsed_args["password"],
-        location = parsed_args["location"],
-        command = parsed_args["%COMMAND%"],
-    )
+    parse_args(args, s)
 end
 
 function extractFilesFromDb(servername, database, username, password, location)
@@ -112,15 +102,15 @@ function extractFilesFromDb(servername, database, username, password, location)
 end
 
 function real_main()
-    a = getargs()
+    parsed_args = parse_commandline(ARGS)
 
-    if a.command == "retrieve-db-objects"
+    if parsed_args["%COMMAND%"] == "retrieve-db-objects"
         extractFilesFromDb(
-            a.servername,
-            a.database,
-            a.username,
-            a.password,
-            a.location,
+            parsed_args[parsed_args["%COMMAND%"]]["servername"],
+            parsed_args[parsed_args["%COMMAND%"]]["database"],
+            parsed_args[parsed_args["%COMMAND%"]]["username"],
+            parsed_args[parsed_args["%COMMAND%"]]["password"],
+            parsed_args[parsed_args["%COMMAND%"]]["location"],
         )
     else
         println(
