@@ -1,15 +1,32 @@
+module GitQooL
+
 using ArgParse
 using ODBC
 using DataFrames
 using LightXML
 
-function parse_commandline()
-    s = ArgParseSettings(commands_are_required = false)
+function julia_main()::Cint
+    try
+        real_main()
+    catch
+        Base.invokelatest(Base.display_error, Base.catch_stack())
+        return 1
+    end
+    return 0
+end
 
+function parse_commandline(args)
+    s = ArgParseSettings(commands_are_required = true)
+
+    # command list
     @add_arg_table! s begin
         "retrieve-db-objects"
         help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in repository, the object will be deleted from local repository."
         action = :command
+    end
+
+    # params specific to retrieve-db-objects command
+    @add_arg_table! s["retrieve-db-objects"] begin
         "--servername", "-s"
         help = "server name on which your target database is stored"
         arg_type = String
@@ -33,23 +50,12 @@ function parse_commandline()
         required = false
     end
 
-    parse_args(s)
-end
-
-function getargs()
-    parsed_args = parse_commandline()
-
-    (
-        servername = parsed_args["servername"],
-        database = parsed_args["database"],
-        username = parsed_args["username"],
-        password = parsed_args["password"],
-        location = parsed_args["location"],
-        command = parsed_args["%COMMAND%"],
-    )
+    parse_args(args, s)
 end
 
 function extractFilesFromDb(servername, database, username, password, location)
+    @show ARGS
+
     if username == nothing
         println("Enter user ID for IVIEWALPHA:")
         username = chomp(readline())
@@ -97,18 +103,32 @@ function extractFilesFromDb(servername, database, username, password, location)
     DBInterface.close!(conn)
 end
 
-a = getargs()
+function real_main()
+    parsed_args = parse_commandline(ARGS)
 
-if a.command == "retrieve-db-objects"
-    extractFilesFromDb(
-        a.servername,
-        a.database,
-        a.username,
-        a.password,
-        a.location,
-    )
-else
-    println(
-        "Please use command. Call \"git-qool --help\" for details of available commands.",
-    )
+    # store entered command
+    cmd = parsed_args["%COMMAND%"]
+
+    # dict lookup for command gives access to arguments for command
+    cmdArgs = parsed_args[cmd]
+
+    if cmd == "retrieve-db-objects"
+        extractFilesFromDb(
+            cmdArgs["servername"],
+            cmdArgs["database"],
+            cmdArgs["username"],
+            cmdArgs["password"],
+            cmdArgs["location"],
+        )
+    else
+        println(
+            "Please use command. Call \"git-qool --help\" for details of available commands.",
+        )
+    end
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    real_main()
+end
+
 end

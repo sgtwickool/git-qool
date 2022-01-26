@@ -1,0 +1,10 @@
+name = "GitQooL"
+uuid = "d38d46c1-36cb-4db4-bd5d-f9d12b7414c3"
+authors = ["sgtwickool <gabba_gabba_hey@hotmail.co.uk>"]
+version = "0.1.0"
+
+[deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
+ODBC = "be6f12e9-ca4f-5eb2-a339-a4f995cc0291"
