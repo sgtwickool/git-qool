@@ -50,6 +50,31 @@ function parse_commandline(args)
         required = false
     end
 
+    # params specific to retrieve-db-objects command
+    @add_arg_table! s["deploy"] begin
+        "--servername", "-s"
+        help = "server name on which your target database is stored"
+        arg_type = String
+        default = "gk-db01"
+        "--database", "-d"
+        help = "database name"
+        arg_type = String
+        default = "IVIEWALPHA"
+        "--username", "-u"
+        help = "sql server log in username"
+        arg_type = String
+        required = false
+        "--password", "-p"
+        help = "sql server log in password"
+        arg_type = String
+        required = false
+        "--location", "-l"
+        help = "location of folder containing local repository where database object definitions are stored"
+        arg_type = String
+        default = pwd()
+        required = false
+    end
+
     parse_args(args, s)
 end
 
@@ -57,7 +82,7 @@ function extractFilesFromDb(servername, database, username, password, location)
     @show ARGS
 
     if username == nothing
-        println("Enter user ID for IVIEWALPHA:")
+        println("Enter user ID for $(servername):")
         username = chomp(readline())
     end
 
@@ -103,6 +128,32 @@ function extractFilesFromDb(servername, database, username, password, location)
     DBInterface.close!(conn)
 end
 
+function deployToDb(servername, database, username, password, location)
+    if username == nothing
+        println("Enter user ID for $(servername):")
+        username = chomp(readline())
+    end
+
+    if password == nothing
+        println("Enter password:")
+        password = chomp(readline())
+    end
+
+    println("Connecting to database")
+    conn = ODBC.Connection(
+        "Driver=SQL Server;SERVER=$(servername);DATABASE=$(database);UID=$(username);PWD=$(password)",
+    )
+
+    # todo: use extractFilesFromDb to get existing state of $database
+    # - either save this in a temp location or save in memory
+    # - compare with what is in repository $location
+    # - create list of objects to change
+    # - perform dependency analysis
+
+    println("Closing database connection")
+    DBInterface.close!(conn)
+end
+
 function real_main()
     parsed_args = parse_commandline(ARGS)
 
@@ -114,6 +165,14 @@ function real_main()
 
     if cmd == "retrieve-db-objects"
         extractFilesFromDb(
+            cmdArgs["servername"],
+            cmdArgs["database"],
+            cmdArgs["username"],
+            cmdArgs["password"],
+            cmdArgs["location"],
+        )
+    elseif cmd == "deploy"
+        deployToDb(
             cmdArgs["servername"],
             cmdArgs["database"],
             cmdArgs["username"],
