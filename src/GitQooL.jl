@@ -15,13 +15,37 @@ function julia_main()::Cint
     return 0
 end
 
+function filecompare(path1::AbstractString, path2::AbstractString)
+    stat1, stat2 = stat(path1), stat(path2)
+    if !(isfile(stat1) && isfile(stat2)) || filesize(stat1) != filesize(stat2)
+        return false # or should it throw if a file doesn't exist?
+    end
+    stat1 == stat2 && return true # same file
+    open(path1, "r") do file1
+        open(path2, "r") do file2
+            buf1 = Vector{UInt8}(undef, 32768)
+            buf2 = similar(buf1)
+            while !eof(file1) && !eof(file2)
+                n1 = readbytes!(file1, buf1)
+                n2 = readbytes!(file2, buf2)
+                n1 != n2 && return false
+                0 != Base._memcmp(buf1, buf2, n1) && return false
+            end
+            return eof(file1) == eof(file2)
+        end
+    end
+end
+
 function parse_commandline(args)
     s = ArgParseSettings(commands_are_required = true)
 
     # command list
     @add_arg_table! s begin
         "retrieve-db-objects"
-        help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in repository, the object will be deleted from local repository."
+        help = "save db object definitions to chosen repository. if objects already exist in repository, they will be overwritten. if object exists in repository, but does not exist in database, the object will be deleted from local repository."
+        action = :command
+        "deploy"
+        help = "deploy from chosen repository to chosen server"
         action = :command
     end
 
@@ -81,12 +105,12 @@ end
 function extractFilesFromDb(servername, database, username, password, location)
     @show ARGS
 
-    if username == nothing
+    if username === nothing
         println("Enter user ID for $(servername):")
         username = chomp(readline())
     end
 
-    if password == nothing
+    if password === nothing
         println("Enter password:")
         password = chomp(readline())
     end
@@ -102,7 +126,7 @@ function extractFilesFromDb(servername, database, username, password, location)
     sqlobjects = DBInterface.execute(conn, objectsql) |> DataFrame
 
     println("Clearing existing local directory")
-    rm("$(location)/$(database)", recursive = true, force = true)
+    rm(joinpath(location,database), recursive = true, force = true)
 
     # Loop through each object and store each definition in a sql file
     # grouped in folders by type
@@ -112,12 +136,12 @@ function extractFilesFromDb(servername, database, username, password, location)
         sqlobjects.type_desc,
         sqlobjects.definition,
     )
-        type_folder = "$(location)/$(database)/$(type_desc)"
+        type_folder = joinpath(location,database,type_desc)
         println("Saving $(type_desc): $(name)")
         mkpath(type_folder)
         filename =
             schemaname === missing ? "$type_folder/$name.sql" :
-            "$type_folder/$schemaname.$name.sql"
+            joinpath(type_folder,"$schemaname.$name.sql")
         output_file = open(filename, "w")
         #println(filename)
         write(output_file, definition)
@@ -129,12 +153,12 @@ function extractFilesFromDb(servername, database, username, password, location)
 end
 
 function deployToDb(servername, database, username, password, location)
-    if username == nothing
+    if username === nothing
         println("Enter user ID for $(servername):")
         username = chomp(readline())
     end
 
-    if password == nothing
+    if password === nothing
         println("Enter password:")
         password = chomp(readline())
     end
@@ -149,6 +173,21 @@ function deployToDb(servername, database, username, password, location)
     # - compare with what is in repository $location
     # - create list of objects to change
     # - perform dependency analysis
+
+    tmpdir = tempname(cleanup=false)
+    objectstempdir = joinpath(tmpdir,database)
+    dir = joinpath(location,database)
+
+    extractFilesFromDb(servername,database,username,password,tmpdir)
+
+    for (root, dirs, files) in walkdir(dir)
+        for file in files
+            # list all objects that have changed in db
+            if !filecompare(joinpath(root,file),joinpath(replace(root,dir => objectstempdir),file))
+                println(joinpath(root,file)) # this should be changed to perform deployment for these objects
+            end
+        end
+    end
 
     println("Closing database connection")
     DBInterface.close!(conn)
