@@ -137,7 +137,7 @@ function extractFilesFromDb(servername, database, username, password, location)
         sqlobjects.definition,
     )
         type_folder = joinpath(location,database,type_desc)
-        println("Saving $(type_desc): $(name)")
+        # println("Saving $(type_desc): $(name)")
         mkpath(type_folder)
         filename =
             schemaname === missing ? "$type_folder/$name.sql" :
@@ -153,21 +153,6 @@ function extractFilesFromDb(servername, database, username, password, location)
 end
 
 function deployToDb(servername, database, username, password, location)
-    if username === nothing
-        println("Enter user ID for $(servername):")
-        username = chomp(readline())
-    end
-
-    if password === nothing
-        println("Enter password:")
-        password = chomp(readline())
-    end
-
-    println("Connecting to database")
-    conn = ODBC.Connection(
-        "Driver=SQL Server;SERVER=$(servername);DATABASE=$(database);UID=$(username);PWD=$(password)",
-    )
-
     # todo: use extractFilesFromDb to get existing state of $database
     # - either save this in a temp location or save in memory
     # - compare with what is in repository $location
@@ -175,22 +160,27 @@ function deployToDb(servername, database, username, password, location)
     # - perform dependency analysis
 
     tmpdir = tempname(cleanup=false)
-    objectstempdir = joinpath(tmpdir,database)
-    dir = joinpath(location,database)
 
     extractFilesFromDb(servername,database,username,password,tmpdir)
 
-    for (root, dirs, files) in walkdir(dir)
+    for (root, dirs, files) in walkdir(joinpath(location,database))
         for file in files
-            # list all objects that have changed in db
-            if !filecompare(joinpath(root,file),joinpath(replace(root,dir => objectstempdir),file))
+            # list all objects that have been changed in/added to repo (to be added/updated in db)
+            if !filecompare(joinpath(root,file),joinpath(replace(root,location => "$tmpdir\\"),file))
                 println(joinpath(root,file)) # this should be changed to perform deployment for these objects
             end
         end
     end
 
-    println("Closing database connection")
-    DBInterface.close!(conn)
+    for (root, dirs, files) in walkdir(joinpath(tmpdir,database))
+        for file in files
+            # list all objects exist in db, but are not in repo (to be deleted from db)
+            stat1, stat2 = stat(joinpath(replace(root,"$tmpdir\\" => location),file)), stat(joinpath(root,file))
+            if !isfile(stat1) && isfile(stat2)
+                println("Drop: $(joinpath(root,file))")
+            end
+        end
+    end
 end
 
 function real_main()
