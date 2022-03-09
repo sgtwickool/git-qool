@@ -4,6 +4,7 @@ using ArgParse
 using ODBC
 using DataFrames
 using LightXML
+using YAML
 
 function julia_main()::Cint
     try
@@ -18,7 +19,7 @@ end
 function filecompare(path1::AbstractString, path2::AbstractString)
     stat1, stat2 = stat(path1), stat(path2)
     if !(isfile(stat1) && isfile(stat2)) || filesize(stat1) != filesize(stat2)
-        return false # or should it throw if a file doesn't exist?
+        return false
     end
     stat1 == stat2 && return true # same file
     open(path1, "r") do file1
@@ -128,6 +129,9 @@ function extractFilesFromDb(servername, database, username, password, location)
     println("Clearing existing local directory")
     rm(joinpath(location,database), recursive = true, force = true)
 
+    # Initialise empty Dict in which to add object meta-data
+    metadata = Dict("DatabaseName"=>database,"Objects"=>Dict[])
+
     # Loop through each object and store each definition in a sql file
     # grouped in folders by type
     for (name, schemaname, type_desc, definition) in zip(
@@ -146,7 +150,11 @@ function extractFilesFromDb(servername, database, username, password, location)
         #println(filename)
         write(output_file, definition)
         close(output_file)
+
+        push!(metadata["Objects"],Dict(["fullpath"=>filename, "name"=>name, "schemaname"=>schemaname, "type_desc"=>type_desc]))
     end
+
+    YAML.write_file(joinpath(location,database,"objectmetadata.yml"), metadata)
 
     println("Closing database connection")
     DBInterface.close!(conn)
@@ -159,7 +167,7 @@ function deployToDb(servername, database, username, password, location)
     # - create list of objects to change
     # - perform dependency analysis
 
-    tmpdir = tempname(cleanup=false)
+    tmpdir = tempname()
 
     extractFilesFromDb(servername,database,username,password,tmpdir)
 
